@@ -154,6 +154,13 @@ void coomm_init(void)
 }
 
 
+static void (*oom_callback)(int subsystem, unsigned int severity)
+
+void coomm_register_oom_callback(void (*cb)(int subsystem, unsigned int severity))
+{
+	oom_callback = cb;
+}
+
 
 void *xmalloc(int component, size_t size)
 {
@@ -169,7 +176,7 @@ void *xmalloc(int component, size_t size)
 }
 
 
-void xfree(int component, void *ptr, size_t size)
+void xfree_full(int component, void *ptr, size_t size)
 {
 	if (coomm_account[component].allocated >
 	    coomm_account[component].max_allocated) {
@@ -182,6 +189,32 @@ void xfree(int component, void *ptr, size_t size)
 	free(ptr);
 }
 
+void xfree(void *ptr)
+{
+	/* now search in tree to find entry by
+	 * memory address. If we do not find an valid
+	 * entry the user has called malloc_full() which
+	 * he should not call or the pointer was never allocated.
+	 * We print a warning/error message to correct this
+	 */
+
+	/* finally we call free anyway, just to provide a expected behavior */
+	free(ptr);
+}
+
+
+static void coom_cb(int subsystem, unsigned int severity)
+{
+	printf("subsystem %d should reclaim memory [severity: %d]\n",
+	       subsystem, severity);
+}
+
+static void init(void)
+{
+	coomm_init();
+	coomm_register_oom_callback(coom_cb);
+}
+
 
 static void component_alpha_init(void)
 {
@@ -189,7 +222,7 @@ static void component_alpha_init(void)
 
 	ptr = xmalloc(MEMORY_SS_COMPONENT_ALPHA, 100);
 
-	xfree(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
+	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
 }
 
 
@@ -197,6 +230,8 @@ int main(int ac, char **av)
 {
 	(void) ac;
 	(void) av;
+
+	init();
 
 	component_alpha_init();
 
