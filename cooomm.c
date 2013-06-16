@@ -20,9 +20,9 @@
 
 #undef __always_inline
 #if __GNUC_PREREQ (3,2)
-# define __always_inline __inline __attribute__ ((__always_inline__))
+#define __always_inline __inline __attribute__ ((__always_inline__))
 #else
-# define __always_inline __inline
+#define __always_inline __inline
 #endif
 
 /*
@@ -32,16 +32,16 @@
 #if defined(__STDC_VERSION__) && \
 	(__STDC_VERSION__ >= 199901L) && \
 	(!defined(__SUNPRO_C) || (__SUNPRO_C > 0x580))
-# define FLEX_ARRAY /* empty */
+#define FLEX_ARRAY		/* empty */
 #elif defined(__GNUC__)
-# if (__GNUC__ >= 3)
-#  define FLEX_ARRAY /* empty */
-# else
-#  define FLEX_ARRAY 0 /* older GNU extension */
-# endif
+#if (__GNUC__ >= 3)
+#define FLEX_ARRAY		/* empty */
+#else
+#define FLEX_ARRAY 0		/* older GNU extension */
+#endif
 #endif
 #ifndef FLEX_ARRAY
-# define FLEX_ARRAY 1
+#define FLEX_ARRAY 1
 #endif
 #endif
 
@@ -63,44 +63,44 @@
 
 enum rbtree_color { RED, BLACK };
 
-typedef int (*rbtree_compare_func)(void* left_key, void* right_key);
+typedef int (*rbtree_compare_func) (void *left_key, void *right_key);
 
 struct rbtree_node {
-	struct rbtree_node* left;
-	struct rbtree_node* right;
-	struct rbtree_node* parent;
+	struct rbtree_node *left;
+	struct rbtree_node *right;
+	struct rbtree_node *parent;
 	enum rbtree_color color;
-	void* key;
-	void* data;
+	void *key;
+	void *data;
 };
 
 struct rbtree {
-	struct rbtree_node * root;
+	struct rbtree_node *root;
 	rbtree_compare_func compare;
 	size_t size;
 };
 
-
-void rbtree_init(struct rbtree *, int (*cmp)(void *, void *));
+void rbtree_init(struct rbtree *, int (*cmp) (void *, void *));
 void rbtree_init_int(struct rbtree *);
 void rbtree_init_double(struct rbtree *);
 void *rbtree_lookup(struct rbtree *, void *);
 void rbtree_insert(struct rbtree *, struct rbtree_node *);
-struct rbtree_node * rbtree_delete(struct rbtree *, void *);
+struct rbtree_node *rbtree_delete(struct rbtree *, void *);
 size_t rbtree_size(struct rbtree *);
 struct rbtree_node *rbtree_node_alloc(void);
 void rbtree_node_free(struct rbtree_node *);
 
-static struct rbtree_node* sibling(struct rbtree_node* n);
-static struct rbtree_node* uncle(struct rbtree_node* n);
-static enum rbtree_color node_color(struct rbtree_node* n);
+static struct rbtree_node *sibling(struct rbtree_node *n);
+static struct rbtree_node *uncle(struct rbtree_node *n);
+static enum rbtree_color node_color(struct rbtree_node *n);
 
 static struct rbtree_node *lookup_node(struct rbtree *, void *);
 static void rotate_left(struct rbtree *, struct rbtree_node *);
 static void rotate_right(struct rbtree *, struct rbtree_node *);
 
 static struct rbtree_node *maximum_node(struct rbtree_node *);
-static void replace_node(struct rbtree *, struct rbtree_node *, struct rbtree_node*);
+static void replace_node(struct rbtree *, struct rbtree_node *,
+			 struct rbtree_node *);
 static void insert_case1(struct rbtree *, struct rbtree_node *);
 static void insert_case2(struct rbtree *, struct rbtree_node *);
 static void insert_case3(struct rbtree *, struct rbtree_node *);
@@ -128,87 +128,85 @@ void rbtree_node_free(struct rbtree_node *n)
 	free(n);
 }
 
-static struct rbtree_node* grandparent(struct rbtree_node* n) {
-	assert (n != NULL);
-	assert (n->parent != NULL); /* Not the root struct rbtree_node* */
-	assert (n->parent->parent != NULL); /* Not child of root */
+static struct rbtree_node *grandparent(struct rbtree_node *n)
+{
+	assert(n != NULL);
+	assert(n->parent != NULL);	/* Not the root struct rbtree_node* */
+	assert(n->parent->parent != NULL);	/* Not child of root */
 	return n->parent->parent;
 }
 
-struct rbtree_node* sibling(struct rbtree_node* n)
+struct rbtree_node *sibling(struct rbtree_node *n)
 {
-	assert (n != NULL);
-	assert (n->parent != NULL); /* Root struct rbtree_node* has no sibling */
+	assert(n != NULL);
+	assert(n->parent != NULL);	/* Root struct rbtree_node* has no sibling */
 	if (n == n->parent->left)
 		return n->parent->right;
 	else
 		return n->parent->left;
 }
 
-struct rbtree_node* uncle(struct rbtree_node* n)
+struct rbtree_node *uncle(struct rbtree_node *n)
 {
-	assert (n != NULL);
-	assert (n->parent != NULL); /* Root struct rbtree_node* has no uncle */
-	assert (n->parent->parent != NULL); /* Children of root have no uncle */
+	assert(n != NULL);
+	assert(n->parent != NULL);	/* Root struct rbtree_node* has no uncle */
+	assert(n->parent->parent != NULL);	/* Children of root have no uncle */
 	return sibling(n->parent);
 }
 
-
-
-enum rbtree_color node_color(struct rbtree_node* n)
+enum rbtree_color node_color(struct rbtree_node *n)
 {
 	return n == NULL ? BLACK : n->color;
 }
 
-
-void rbtree_init(struct rbtree* tree, rbtree_compare_func compare)
+void rbtree_init(struct rbtree *tree, rbtree_compare_func compare)
 {
-	tree->root    = NULL;
+	tree->root = NULL;
 	tree->compare = compare;
-	tree->size    = 0;
+	tree->size = 0;
 }
 
 static int compare_int(void *l, void *r)
 {
-	uintptr_t left  = (uintptr_t) l;
+	uintptr_t left = (uintptr_t) l;
 	uintptr_t right = (uintptr_t) r;
 	if (left < right)
 		return -1;
 	else if (left > right)
 		return 1;
 	else {
-		assert (left == right);
+		assert(left == right);
 		return 0;
 	}
 }
 
-void rbtree_init_int(struct rbtree* tree)
+void rbtree_init_int(struct rbtree *tree)
 {
 	return rbtree_init(tree, compare_int);
 }
 
-
-static int compare_double(void *leftp, void *rightp) {
-	double *left  = (double *)leftp;
+static int compare_double(void *leftp, void *rightp)
+{
+	double *left = (double *)leftp;
 	double *right = (double *)rightp;
 	if (*left < *right)
 		return -1;
 	else if (*left > *right)
 		return 1;
 	else {
-		assert (*left == *right);
+		assert(*left == *right);
 		return 0;
 	}
 }
 
-void rbtree_init_double(struct rbtree* tree)
+void rbtree_init_double(struct rbtree *tree)
 {
 	return rbtree_init(tree, compare_double);
 }
 
-
-struct rbtree_node* lookup_node(struct rbtree* t, void* key) {
-	struct rbtree_node* n = t->root;
+struct rbtree_node *lookup_node(struct rbtree *t, void *key)
+{
+	struct rbtree_node *n = t->root;
 	while (n != NULL) {
 		int comp_result = t->compare(key, n->key);
 		if (comp_result == 0) {
@@ -223,15 +221,15 @@ struct rbtree_node* lookup_node(struct rbtree* t, void* key) {
 	return n;
 }
 
-
-void* rbtree_lookup(struct rbtree* t, void* key) {
-	struct rbtree_node* n = lookup_node(t, key);
+void *rbtree_lookup(struct rbtree *t, void *key)
+{
+	struct rbtree_node *n = lookup_node(t, key);
 	return n == NULL ? NULL : n->data;
 }
 
-
-void rotate_left(struct rbtree* t, struct rbtree_node* n) {
-	struct rbtree_node* r = n->right;
+void rotate_left(struct rbtree *t, struct rbtree_node *n)
+{
+	struct rbtree_node *r = n->right;
 	replace_node(t, n, r);
 	n->right = r->left;
 	if (r->left != NULL) {
@@ -241,9 +239,9 @@ void rotate_left(struct rbtree* t, struct rbtree_node* n) {
 	n->parent = r;
 }
 
-
-void rotate_right(struct rbtree* t, struct rbtree_node* n) {
-	struct rbtree_node* L = n->left;
+void rotate_right(struct rbtree *t, struct rbtree_node *n)
+{
+	struct rbtree_node *L = n->left;
 	replace_node(t, n, L);
 	n->left = L->right;
 	if (L->right != NULL) {
@@ -253,9 +251,8 @@ void rotate_right(struct rbtree* t, struct rbtree_node* n) {
 	n->parent = L;
 }
 
-
-void replace_node(struct rbtree* t, struct rbtree_node* oldn,
-		struct rbtree_node* newn)
+void replace_node(struct rbtree *t, struct rbtree_node *oldn,
+		  struct rbtree_node *newn)
 {
 	if (oldn->parent == NULL) {
 		t->root = newn;
@@ -270,21 +267,21 @@ void replace_node(struct rbtree* t, struct rbtree_node* oldn,
 	}
 }
 
-
-void rbtree_insert(struct rbtree* t, struct rbtree_node *inserted_node)
+void rbtree_insert(struct rbtree *t, struct rbtree_node *inserted_node)
 {
 
-	inserted_node->color  = RED;
-	inserted_node->left   = NULL;
-	inserted_node->right  = NULL;
+	inserted_node->color = RED;
+	inserted_node->left = NULL;
+	inserted_node->right = NULL;
 	inserted_node->parent = NULL;
 
 	if (t->root == NULL) {
 		t->root = inserted_node;
 	} else {
-		struct rbtree_node* n = t->root;
+		struct rbtree_node *n = t->root;
 		while (1) {
-			int comp_result = t->compare(inserted_node->key, n->key);
+			int comp_result =
+			    t->compare(inserted_node->key, n->key);
 			if (comp_result == 0) {
 				/* duplicate */
 				n->data = inserted_node->data;
@@ -297,7 +294,7 @@ void rbtree_insert(struct rbtree* t, struct rbtree_node *inserted_node)
 					n = n->left;
 				}
 			} else {
-				assert (comp_result > 0);
+				assert(comp_result > 0);
 				if (n->right == NULL) {
 					n->right = inserted_node;
 					break;
@@ -312,8 +309,7 @@ void rbtree_insert(struct rbtree* t, struct rbtree_node *inserted_node)
 	insert_case1(t, inserted_node);
 }
 
-
-void insert_case1(struct rbtree* t, struct rbtree_node* n)
+void insert_case1(struct rbtree *t, struct rbtree_node *n)
 {
 	if (n->parent == NULL)
 		n->color = BLACK;
@@ -321,8 +317,7 @@ void insert_case1(struct rbtree* t, struct rbtree_node* n)
 		insert_case2(t, n);
 }
 
-
-void insert_case2(struct rbtree* t, struct rbtree_node* n)
+void insert_case2(struct rbtree *t, struct rbtree_node *n)
 {
 	if (node_color(n->parent) == BLACK)
 		return;
@@ -330,8 +325,7 @@ void insert_case2(struct rbtree* t, struct rbtree_node* n)
 		insert_case3(t, n);
 }
 
-
-void insert_case3(struct rbtree* t, struct rbtree_node* n)
+void insert_case3(struct rbtree *t, struct rbtree_node *n)
 {
 	if (node_color(uncle(n)) == RED) {
 		n->parent->color = BLACK;
@@ -343,8 +337,7 @@ void insert_case3(struct rbtree* t, struct rbtree_node* n)
 	}
 }
 
-
-void insert_case4(struct rbtree* t, struct rbtree_node* n)
+void insert_case4(struct rbtree *t, struct rbtree_node *n)
 {
 	if (n == n->parent->right && n->parent == grandparent(n)->left) {
 		rotate_left(t, n->parent);
@@ -356,28 +349,28 @@ void insert_case4(struct rbtree* t, struct rbtree_node* n)
 	insert_case5(t, n);
 }
 
-
-void insert_case5(struct rbtree* t, struct rbtree_node* n)
+void insert_case5(struct rbtree *t, struct rbtree_node *n)
 {
 	n->parent->color = BLACK;
 	grandparent(n)->color = RED;
 	if (n == n->parent->left && n->parent == grandparent(n)->left) {
 		rotate_right(t, grandparent(n));
 	} else {
-		assert (n == n->parent->right && n->parent == grandparent(n)->right);
+		assert(n == n->parent->right
+		       && n->parent == grandparent(n)->right);
 		rotate_left(t, grandparent(n));
 	}
 }
 
-
-struct rbtree_node *rbtree_delete(struct rbtree* t, void* key)
+struct rbtree_node *rbtree_delete(struct rbtree *t, void *key)
 {
-	struct rbtree_node* child;
-	struct rbtree_node* n = lookup_node(t, key);
-	if (n == NULL) return NULL; /* Key not found, do nothing */
+	struct rbtree_node *child;
+	struct rbtree_node *n = lookup_node(t, key);
+	if (n == NULL)
+		return NULL;	/* Key not found, do nothing */
 	if (n->left != NULL && n->right != NULL) {
 		/* Copy key/data from predecessor and then delete it instead */
-		struct rbtree_node* pred = maximum_node(n->left);
+		struct rbtree_node *pred = maximum_node(n->left);
 		n->key = pred->key;
 		n->data = pred->data;
 		n = pred;
@@ -396,18 +389,16 @@ struct rbtree_node *rbtree_delete(struct rbtree* t, void* key)
 	return n;
 }
 
-
-static struct rbtree_node* maximum_node(struct rbtree_node* n)
+static struct rbtree_node *maximum_node(struct rbtree_node *n)
 {
-	assert (n != NULL);
+	assert(n != NULL);
 	while (n->right != NULL) {
 		n = n->right;
 	}
 	return n;
 }
 
-
-void delete_case1(struct rbtree* t, struct rbtree_node* n)
+void delete_case1(struct rbtree *t, struct rbtree_node *n)
 {
 	if (n->parent == NULL)
 		return;
@@ -415,8 +406,7 @@ void delete_case1(struct rbtree* t, struct rbtree_node* n)
 		delete_case2(t, n);
 }
 
-
-void delete_case2(struct rbtree* t, struct rbtree_node* n)
+void delete_case2(struct rbtree *t, struct rbtree_node *n)
 {
 	if (node_color(sibling(n)) == RED) {
 		n->parent->color = RED;
@@ -429,52 +419,43 @@ void delete_case2(struct rbtree* t, struct rbtree_node* n)
 	delete_case3(t, n);
 }
 
-
-void delete_case3(struct rbtree* t, struct rbtree_node* n)
+void delete_case3(struct rbtree *t, struct rbtree_node *n)
 {
 	if (node_color(n->parent) == BLACK &&
-			node_color(sibling(n)) == BLACK &&
-			node_color(sibling(n)->left) == BLACK &&
-			node_color(sibling(n)->right) == BLACK)
-	{
+	    node_color(sibling(n)) == BLACK &&
+	    node_color(sibling(n)->left) == BLACK &&
+	    node_color(sibling(n)->right) == BLACK) {
 		sibling(n)->color = RED;
 		delete_case1(t, n->parent);
-	}
-	else
+	} else
 		delete_case4(t, n);
 }
 
-
-void delete_case4(struct rbtree* t, struct rbtree_node* n)
+void delete_case4(struct rbtree *t, struct rbtree_node *n)
 {
 	if (node_color(n->parent) == RED &&
-			node_color(sibling(n)) == BLACK &&
-			node_color(sibling(n)->left) == BLACK &&
-			node_color(sibling(n)->right) == BLACK)
-	{
+	    node_color(sibling(n)) == BLACK &&
+	    node_color(sibling(n)->left) == BLACK &&
+	    node_color(sibling(n)->right) == BLACK) {
 		sibling(n)->color = RED;
 		n->parent->color = BLACK;
-	}
-	else
+	} else
 		delete_case5(t, n);
 }
 
-
-void delete_case5(struct rbtree* t, struct rbtree_node* n)
+void delete_case5(struct rbtree *t, struct rbtree_node *n)
 {
 	if (n == n->parent->left &&
-			node_color(sibling(n)) == BLACK &&
-			node_color(sibling(n)->left) == RED &&
-			node_color(sibling(n)->right) == BLACK)
-	{
+	    node_color(sibling(n)) == BLACK &&
+	    node_color(sibling(n)->left) == RED &&
+	    node_color(sibling(n)->right) == BLACK) {
 		sibling(n)->color = RED;
 		sibling(n)->left->color = BLACK;
 		rotate_right(t, sibling(n));
 	} else if (n == n->parent->right &&
-			node_color(sibling(n)) == BLACK &&
-			node_color(sibling(n)->right) == RED &&
-			node_color(sibling(n)->left) == BLACK)
-	{
+		   node_color(sibling(n)) == BLACK &&
+		   node_color(sibling(n)->right) == RED &&
+		   node_color(sibling(n)->left) == BLACK) {
 		sibling(n)->color = RED;
 		sibling(n)->right->color = BLACK;
 		rotate_left(t, sibling(n));
@@ -482,34 +463,30 @@ void delete_case5(struct rbtree* t, struct rbtree_node* n)
 	delete_case6(t, n);
 }
 
-
-void delete_case6(struct rbtree* t, struct rbtree_node* n)
+void delete_case6(struct rbtree *t, struct rbtree_node *n)
 {
 	sibling(n)->color = node_color(n->parent);
 	n->parent->color = BLACK;
 
 	if (n == n->parent->left) {
-		assert (node_color(sibling(n)->right) == RED);
+		assert(node_color(sibling(n)->right) == RED);
 		sibling(n)->right->color = BLACK;
 		rotate_left(t, n->parent);
 	} else {
-		assert (node_color(sibling(n)->left) == RED);
+		assert(node_color(sibling(n)->left) == RED);
 		sibling(n)->left->color = BLACK;
 		rotate_right(t, n->parent);
 	}
 }
 
+static void my_init_hook(void);
+static void *my_malloc_hook(size_t, const void *);
+static void my_free_hook(void *, const void *);
 
+void (*volatile __malloc_initialize_hook) (void) = my_init_hook;
 
-static void my_init_hook (void);
-static void *my_malloc_hook (size_t, const void *);
-static void my_free_hook (void*, const void *);
-
-void (*volatile __malloc_initialize_hook)(void) = my_init_hook;
-
-static void *(*old_malloc_hook)(size_t size, const void *caller);
-static void (*old_free_hook)(void *ptr, const void *caller);
-
+static void *(*old_malloc_hook) (size_t size, const void *caller);
+static void (*old_free_hook) (void *ptr, const void *caller);
 
 static void my_init_hook(void)
 {
@@ -519,12 +496,11 @@ static void my_init_hook(void)
 	__free_hook = my_free_hook;
 }
 
-
 static void *my_malloc_hook(size_t size, const void *caller)
 {
 	void *result;
 
-	(void) caller;
+	(void)caller;
 
 	/* Restore all old hooks */
 	__malloc_hook = old_malloc_hook;
@@ -538,7 +514,7 @@ static void *my_malloc_hook(size_t size, const void *caller)
 	old_free_hook = __free_hook;
 
 	/* printf might call malloc, so protect it too. */
-	printf ("malloc (%u) returns %p\n", (unsigned int) size, result);
+	printf("malloc (%u) returns %p\n", (unsigned int)size, result);
 
 	/* Restore our own hooks */
 	__malloc_hook = my_malloc_hook;
@@ -546,10 +522,9 @@ static void *my_malloc_hook(size_t size, const void *caller)
 	return result;
 }
 
-
 static void my_free_hook(void *ptr, const void *caller)
 {
-	(void) caller;
+	(void)caller;
 
 	/* Restore all old hooks */
 	__malloc_hook = old_malloc_hook;
@@ -563,7 +538,7 @@ static void my_free_hook(void *ptr, const void *caller)
 	old_free_hook = __free_hook;
 
 	/* printf might call free, so protect it too. */
-	printf ("freed pointer %p\n", ptr);
+	printf("freed pointer %p\n", ptr);
 
 	/* Restore our own hooks */
 	__malloc_hook = my_malloc_hook;
@@ -578,29 +553,25 @@ enum {
 	MEMORY_SS_COMPONENT_MAX
 };
 
-
 struct coomm_account {
 	size_t allocated;
 	size_t max_allocated;
 };
 
-
 struct coomm_account coomm_account[MEMORY_SS_COMPONENT_MAX];
-
 
 void coomm_init(void)
 {
 	memset(coomm_account, 0, sizeof(coomm_account));
 }
 
+static void (*oom_callback) (int subsystem, unsigned int severity);
 
-static void (*oom_callback)(int subsystem, unsigned int severity);
-
-void coomm_register_oom_callback(void (*cb)(int subsystem, unsigned int severity))
+void
+coomm_register_oom_callback(void (*cb) (int subsystem, unsigned int severity))
 {
 	oom_callback = cb;
 }
-
 
 void *xmalloc(int component, size_t size)
 {
@@ -610,21 +581,20 @@ void *xmalloc(int component, size_t size)
 	if (!ptr)
 		return ptr;
 
-	coomm_account[component].allocated =+ size;
+	coomm_account[component].allocated += size;
 
 	return ptr;
 }
-
 
 void xfree_full(int component, void *ptr, size_t size)
 {
 	if (coomm_account[component].allocated >
 	    coomm_account[component].max_allocated) {
 		coomm_account[component].max_allocated =
-			coomm_account[component].allocated;
+		    coomm_account[component].allocated;
 	}
 
-	coomm_account[component].allocated =- size;
+	coomm_account[component].allocated -= size;
 
 	free(ptr);
 }
@@ -642,7 +612,6 @@ void xfree(void *ptr)
 	free(ptr);
 }
 
-
 static void coom_cb(int subsystem, unsigned int severity)
 {
 	printf("subsystem %d should reclaim memory [severity: %d]\n",
@@ -655,7 +624,6 @@ static void init(void)
 	coomm_register_oom_callback(coom_cb);
 }
 
-
 static void component_alpha_init(void)
 {
 	char *ptr;
@@ -665,11 +633,10 @@ static void component_alpha_init(void)
 	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
 }
 
-
 int main(int ac, char **av)
 {
-	(void) ac;
-	(void) av;
+	(void)ac;
+	(void)av;
 
 	init();
 
