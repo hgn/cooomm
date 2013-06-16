@@ -130,14 +130,66 @@ static void my_free_hook(void *ptr, const void *caller)
 	__free_hook = my_free_hook;
 }
 
+/* definition of memory sub systems */
+enum {
+	MEMORY_SS_COMPONENT_ALPHA,
+	MEMORY_SS_COMPONENT_BETA,
+
+	MEMORY_SS_COMPONENT_MAX
+};
+
+
+struct coomm_account {
+	size_t allocated;
+	size_t max_allocated;
+};
+
+
+struct coomm_account coomm_account[MEMORY_SS_COMPONENT_MAX];
+
+
+void coomm_init(void)
+{
+	memset(coomm_account, 0, sizeof(coomm_account));
+}
+
+
+
+void *xmalloc(int component, size_t size)
+{
+	void *ptr;
+
+	ptr = malloc(size);
+	if (!ptr)
+		return ptr;
+
+	coomm_account[component].allocated =+ size;
+
+	return ptr;
+}
+
+
+void xfree(int component, void *ptr, size_t size)
+{
+	if (coomm_account[component].allocated >
+	    coomm_account[component].max_allocated) {
+		coomm_account[component].max_allocated =
+			coomm_account[component].allocated;
+	}
+
+	coomm_account[component].allocated =- size;
+
+	free(ptr);
+}
+
 
 static void component_alpha_init(void)
 {
 	char *ptr;
 
-	ptr = malloc(100);
+	ptr = xmalloc(MEMORY_SS_COMPONENT_ALPHA, 100);
 
-	free(ptr);
+	xfree(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
 }
 
 
