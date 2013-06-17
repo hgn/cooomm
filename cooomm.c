@@ -573,7 +573,7 @@ coomm_register_oom_callback(void (*cb) (int subsystem, unsigned int severity))
 	oom_callback = cb;
 }
 
-void *xmalloc(int component, size_t size)
+void *xmalloc_full(int component, size_t size)
 {
 	void *ptr;
 
@@ -628,7 +628,7 @@ static void component_alpha_init(void)
 {
 	char *ptr;
 
-	ptr = xmalloc(MEMORY_SS_COMPONENT_ALPHA, 100);
+	ptr = xmalloc_full(MEMORY_SS_COMPONENT_ALPHA, 100);
 
 	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
 }
