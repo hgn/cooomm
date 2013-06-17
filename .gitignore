@@ -1,0 +1,17 @@
+cooomm
+
+.*
+*.o
+*.o.*
+*.a
+*.so
+!.gitignore
+
+cscope.*
+ncscope.*
+
+*.orig
+*~
+\#*#
+
+core.*
