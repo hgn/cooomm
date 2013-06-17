@@ -777,7 +777,7 @@ struct coomm_subsystem {
 };
 
 
-struct coomm_subsystem cs[] =
+static const struct coomm_subsystem cs[] =
 	{
 #define COOMM_SS_ALPHA 1
 		{ .id = COOMM_SS_ALPHA, .name = "Alpha", .min_required = 2048, .priority = 10 },
@@ -786,7 +786,7 @@ struct coomm_subsystem cs[] =
 	};
 
 
-int coomm_register_subsystems(struct coomm_subsystem *ss, size_t ss_max)
+int coomm_register_subsystems(const struct coomm_subsystem *ss, size_t ss_max)
 {
 	(void)ss;
 	(void)ss_max;
