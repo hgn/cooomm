@@ -607,6 +607,8 @@ int coom_malloc_account(void *addr, int component, size_t size)
 	unsigned int i;
 	struct cooom_accounter_entry *cooom_accounter_entry;
 
+	coomm_account[component].allocated += size;
+
 	for (i = 0; i < cooom_accounter_entries_no; i++) {
 		cooom_accounter_entry = &cooom_accounter_entries[i];
 
@@ -645,6 +647,17 @@ void coom_free_account(void *addr)
 	}
 }
 
+void coom_statistics_show(void)
+{
+	int i;
+
+	for (i = 0; i < MEMORY_SS_COMPONENT_MAX; i++) {
+		fprintf(stderr, "component: %d -> currently allocated: %zd, max allocated: %zd\n",
+			i, coomm_account[i].allocated,  coomm_account[i].max_allocated);
+
+	}
+}
+
 
 /* must be freed by xfree_full */
 void *xmalloc_full(int component, size_t size)
@@ -661,7 +674,6 @@ void *xmalloc_full(int component, size_t size)
 		return ptr;
 
 	coom_malloc_account(ptr, component, size);
-	coomm_account[component].allocated += size;
 
 	return ptr;
 }
@@ -723,11 +735,23 @@ static void init(void)
 
 static void component_alpha_init(void)
 {
-	char *ptr;
+	char *ptr, *ptr2;
 
 	ptr = xmalloc_full(MEMORY_SS_COMPONENT_ALPHA, 100);
+	coom_statistics_show();
 
 	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
+	coom_statistics_show();
+
+	ptr = xmalloc_full(MEMORY_SS_COMPONENT_ALPHA, 100);
+	coom_statistics_show();
+
+	ptr2 = xmalloc_full(MEMORY_SS_COMPONENT_ALPHA, 100);
+	coom_statistics_show();
+
+	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
+	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr2, 100);
+	coom_statistics_show();
 }
 
 int main(int ac, char **av)
