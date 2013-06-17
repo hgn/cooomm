@@ -602,20 +602,18 @@ void coomm_init(void)
 }
 
 
-
 int coom_malloc_account(void *addr, int component, size_t size)
 {
 	unsigned int i;
 	struct cooom_accounter_entry *cooom_accounter_entry;
 
 	for (i = 0; i < cooom_accounter_entries_no; i++) {
-
 		cooom_accounter_entry = &cooom_accounter_entries[i];
 
 		/* search free entry, 0 is invalid pointer
 		 * thus we do mark unsused chunks as 0 */
 		if (!cooom_accounter_entry->addr) {
-			cooom_accounter_entry->addr      = *(uintptr_t *)addr;
+			cooom_accounter_entry->addr      = (uintptr_t)addr;
 			cooom_accounter_entry->size      = size;
 			cooom_accounter_entry->component = component;
 			return 0;
@@ -628,11 +626,24 @@ int coom_malloc_account(void *addr, int component, size_t size)
 }
 
 
-int coom_free_account(void)
+void coom_free_account(void *addr)
 {
-	return 0;
-}
+	unsigned int i;
+	struct cooom_accounter_entry *cooom_accounter_entry;
 
+	for (i = 0; i < cooom_accounter_entries_no; i++) {
+		cooom_accounter_entry = &cooom_accounter_entries[i];
+		if (!cooom_accounter_entry->addr)
+			continue;
+
+		if (cooom_accounter_entry->addr == (uintptr_t)addr) {
+			coomm_account[cooom_accounter_entry->component].allocated -=
+				cooom_accounter_entry->size;
+			memset(cooom_accounter_entry, 0, sizeof(*cooom_accounter_entry));
+			return;
+		}
+	}
+}
 
 
 /* must be freed by xfree_full */
