@@ -639,6 +639,11 @@ void coom_free_account(void *addr)
 			continue;
 
 		if (cooom_accounter_entry->addr == (uintptr_t)addr) {
+			if (coomm_account[cooom_accounter_entry->component].allocated >
+					coomm_account[cooom_accounter_entry->component].max_allocated) {
+				coomm_account[cooom_accounter_entry->component].max_allocated =
+					coomm_account[cooom_accounter_entry->component].allocated;
+			}
 			coomm_account[cooom_accounter_entry->component].allocated -=
 				cooom_accounter_entry->size;
 			memset(cooom_accounter_entry, 0, sizeof(*cooom_accounter_entry));
@@ -709,16 +714,11 @@ void xfree_full(int component, void *ptr, size_t size)
 
 void xfree(void *ptr)
 {
-	/* now search in tree to find entry by
-	 * memory address. If we do not find an valid
-	 * entry the user has called malloc_full() which
-	 * he should not call or the pointer was never allocated.
-	 * We print a warning/error message to correct this
-	 */
+	coom_free_account(ptr);
 
-	/* finally we call free anyway, just to provide a expected behavior */
 	free(ptr);
 }
+
 
 static void coom_cb(int subsystem, unsigned int severity)
 {
@@ -727,11 +727,6 @@ static void coom_cb(int subsystem, unsigned int severity)
 }
 
 
-static void init(void)
-{
-	coomm_init();
-	coomm_register_oom_callback(coom_cb);
-}
 
 static void component_alpha_init(void)
 {
@@ -754,14 +749,63 @@ static void component_alpha_init(void)
 	coom_statistics_show();
 }
 
+
+static void component_beta_init(void)
+{
+	char *ptr;
+
+	ptr = xmalloc(MEMORY_SS_COMPONENT_ALPHA, 100);
+	coom_statistics_show();
+
+	xfree(ptr);
+	coom_statistics_show();
+
+	ptr = xmalloc(MEMORY_SS_COMPONENT_ALPHA, 100);
+	coom_statistics_show();
+
+
+	xfree(ptr);
+	coom_statistics_show();
+}
+
+
+struct coomm_subsystem {
+	unsigned int id;
+	const char *name;
+	size_t min_required;
+	unsigned int priority;
+};
+
+
+struct coomm_subsystem cs[] =
+	{
+#define COOMM_SS_ALPHA 1
+		{ .id = COOMM_SS_ALPHA, .name = "Alpha", .min_required = 2048, .priority = 10 },
+#define COOMM_SS_BETA  2
+		{ .id = COOMM_SS_BETA,  .name = "Beta",  .min_required = 8192, .priority = 5 },
+	};
+
+
+int coomm_register_subsystems(struct coomm_subsystem *ss, size_t ss_max)
+{
+	(void)ss;
+	(void)ss_max;
+
+	return 0;
+}
+
+
 int main(int ac, char **av)
 {
 	(void)ac;
 	(void)av;
 
-	init();
+	coomm_init();
+	coomm_register_subsystems(cs, ARRAY_SIZE(cs));
+	coomm_register_oom_callback(coom_cb);
 
 	component_alpha_init();
+	component_beta_init();
 
 	return 0;
 }
