@@ -10,9 +10,12 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <malloc.h>
@@ -617,6 +620,41 @@ static void coom_cb(int subsystem, unsigned int severity)
 	printf("subsystem %d should reclaim memory [severity: %d]\n",
 	       subsystem, severity);
 }
+
+#define INIT_ACCOUNTER_ELEMENTS 256
+
+struct cooom_accounter_entry {
+	uintptr_t addr;
+	size_t size;
+	int components;
+};
+
+struct cooom_accounter_entry *cooom_accounter_entries;
+
+int cooom_init_accounter(void)
+{
+	const size_t init_size = sizeof(struct cooom_accounter_entry) *
+					INIT_ACCOUNTER_ELEMENTS;
+
+	cooom_accounter_entries = malloc(init_size);
+	if (!cooom_accounter_entries)
+		return -ENOMEM;
+
+	memset(cooom_accounter_entries, 0, init_size);
+
+	return 0;
+}
+
+int coom_free_full_account(void)
+{
+	return 0;
+}
+
+int coom_malloc_full_account(void)
+{
+	return 0;
+}
+
 
 static void init(void)
 {
