@@ -563,20 +563,100 @@ struct coomm_account {
 
 struct coomm_account coomm_account[MEMORY_SS_COMPONENT_MAX];
 
-void coomm_init(void)
-{
-	memset(coomm_account, 0, sizeof(coomm_account));
-}
-
 static void (*oom_callback) (int subsystem, unsigned int severity);
 
-void
-coomm_register_oom_callback(void (*cb) (int subsystem, unsigned int severity))
+void coomm_register_oom_callback(void (*cb) (int subsystem, unsigned int severity))
 {
 	oom_callback = cb;
 }
 
+#define INIT_ACCOUNTER_ELEMENTS 256
+
+struct cooom_accounter_entry {
+	uintptr_t addr;
+	size_t size;
+	int component;
+};
+
+unsigned int cooom_accounter_entries_no = INIT_ACCOUNTER_ELEMENTS;
+struct cooom_accounter_entry *cooom_accounter_entries;
+
+static int cooom_init_accounter(void)
+{
+	const size_t init_size = sizeof(struct cooom_accounter_entry) *
+					INIT_ACCOUNTER_ELEMENTS;
+
+	cooom_accounter_entries = malloc(init_size);
+	if (!cooom_accounter_entries)
+		return -ENOMEM;
+
+	memset(cooom_accounter_entries, 0, init_size);
+
+	return 0;
+}
+
+void coomm_init(void)
+{
+	cooom_init_accounter();
+	memset(coomm_account, 0, sizeof(coomm_account));
+}
+
+
+
+int coom_malloc_account(void *addr, int component, size_t size)
+{
+	unsigned int i;
+	struct cooom_accounter_entry *cooom_accounter_entry;
+
+	for (i = 0; i < cooom_accounter_entries_no; i++) {
+
+		cooom_accounter_entry = &cooom_accounter_entries[i];
+
+		/* search free entry, 0 is invalid pointer
+		 * thus we do mark unsused chunks as 0 */
+		if (!cooom_accounter_entry->addr) {
+			cooom_accounter_entry->addr      = *(uintptr_t *)addr;
+			cooom_accounter_entry->size      = size;
+			cooom_accounter_entry->component = component;
+			return 0;
+		}
+	}
+
+	fprintf(stderr, "Out of mem, realloc called\n");
+
+	return -ENOMEM;
+}
+
+
+int coom_free_account(void)
+{
+	return 0;
+}
+
+
+
+/* must be freed by xfree_full */
 void *xmalloc_full(int component, size_t size)
+{
+	void *ptr;
+
+	/* this is not standard complain, but
+	 * to make thinks easier we do not allow
+	 * a allocation size of 0 */
+	assert(size > 0);
+
+	ptr = malloc(size);
+	if (!ptr)
+		return ptr;
+
+	coom_malloc_account(ptr, component, size);
+	coomm_account[component].allocated += size;
+
+	return ptr;
+}
+
+
+void *xmalloc(int component, size_t size)
 {
 	void *ptr;
 
@@ -588,6 +668,7 @@ void *xmalloc_full(int component, size_t size)
 
 	return ptr;
 }
+
 
 void xfree_full(int component, void *ptr, size_t size)
 {
@@ -601,6 +682,7 @@ void xfree_full(int component, void *ptr, size_t size)
 
 	free(ptr);
 }
+
 
 void xfree(void *ptr)
 {
@@ -619,40 +701,6 @@ static void coom_cb(int subsystem, unsigned int severity)
 {
 	printf("subsystem %d should reclaim memory [severity: %d]\n",
 	       subsystem, severity);
-}
-
-#define INIT_ACCOUNTER_ELEMENTS 256
-
-struct cooom_accounter_entry {
-	uintptr_t addr;
-	size_t size;
-	int components;
-};
-
-struct cooom_accounter_entry *cooom_accounter_entries;
-
-int cooom_init_accounter(void)
-{
-	const size_t init_size = sizeof(struct cooom_accounter_entry) *
-					INIT_ACCOUNTER_ELEMENTS;
-
-	cooom_accounter_entries = malloc(init_size);
-	if (!cooom_accounter_entries)
-		return -ENOMEM;
-
-	memset(cooom_accounter_entries, 0, init_size);
-
-	return 0;
-}
-
-int coom_free_full_account(void)
-{
-	return 0;
-}
-
-int coom_malloc_full_account(void)
-{
-	return 0;
 }
 
 
