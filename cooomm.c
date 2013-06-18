@@ -601,6 +601,38 @@ void coomm_init(void)
 	memset(coomm_account, 0, sizeof(coomm_account));
 }
 
+struct coomm_subsystem {
+	unsigned int id;
+	const char *name;
+	size_t min_required;
+	unsigned int priority;
+
+	/* private members */
+	size_t allocated;
+	size_t max_allocated;
+};
+
+static struct coomm_subsystem *coomm_subsystem_saved;
+size_t coomm_subsystem_max_saved;
+
+int coomm_register_subsystems(struct coomm_subsystem *ss, size_t ss_max)
+{
+	size_t i;
+
+	if (!ss || ss_max <= 0)
+		return -EINVAL;
+
+	coomm_subsystem_saved = ss;
+	coomm_subsystem_max_saved = ss_max;
+
+	for (i = 0; i < ss_max; i++) {
+		ss[i].allocated = 0;
+		ss[i].max_allocated = 0;
+	}
+
+	return 0;
+}
+
 
 int coom_malloc_account(void *addr, int component, size_t size)
 {
@@ -769,19 +801,7 @@ static void component_beta_init(void)
 }
 
 
-struct coomm_subsystem {
-	unsigned int id;
-	const char *name;
-	size_t min_required;
-	unsigned int priority;
-
-	/* private members */
-	size_t allocated;
-	size_t max_allocated;
-};
-
-
-static const struct coomm_subsystem cs[] =
+static struct coomm_subsystem cs[] =
 {
 #define COOMM_SS_ALPHA 1
 	{ .id = COOMM_SS_ALPHA, .name = "Alpha", .min_required = 2048, .priority = 10 },
@@ -789,14 +809,6 @@ static const struct coomm_subsystem cs[] =
 	{ .id = COOMM_SS_BETA,  .name = "Beta",  .min_required = 8192, .priority = 5 },
 };
 
-
-int coomm_register_subsystems(const struct coomm_subsystem *ss, size_t ss_max)
-{
-	(void)ss;
-	(void)ss_max;
-
-	return 0;
-}
 
 
 int main(int ac, char **av)
