@@ -774,16 +774,20 @@ struct coomm_subsystem {
 	const char *name;
 	size_t min_required;
 	unsigned int priority;
+
+	/* private members */
+	size_t allocated;
+	size_t max_allocated;
 };
 
 
 static const struct coomm_subsystem cs[] =
-	{
+{
 #define COOMM_SS_ALPHA 1
-		{ .id = COOMM_SS_ALPHA, .name = "Alpha", .min_required = 2048, .priority = 10 },
+	{ .id = COOMM_SS_ALPHA, .name = "Alpha", .min_required = 2048, .priority = 10 },
 #define COOMM_SS_BETA  2
-		{ .id = COOMM_SS_BETA,  .name = "Beta",  .min_required = 8192, .priority = 5 },
-	};
+	{ .id = COOMM_SS_BETA,  .name = "Beta",  .min_required = 8192, .priority = 5 },
+};
 
 
 int coomm_register_subsystems(const struct coomm_subsystem *ss, size_t ss_max)
