@@ -563,12 +563,6 @@ struct coomm_account {
 
 struct coomm_account coomm_account[MEMORY_SS_COMPONENT_MAX];
 
-static void (*oom_callback) (int subsystem, unsigned int severity);
-
-void coomm_register_oom_callback(void (*cb) (int subsystem, unsigned int severity))
-{
-	oom_callback = cb;
-}
 
 #define INIT_ACCOUNTER_ELEMENTS 256
 
@@ -595,17 +589,13 @@ static int cooom_init_accounter(void)
 	return 0;
 }
 
-void coomm_init(void)
-{
-	cooom_init_accounter();
-	memset(coomm_account, 0, sizeof(coomm_account));
-}
 
 struct coomm_subsystem {
 	unsigned int id;
 	const char *name;
 	size_t min_required;
 	unsigned int priority;
+	void (*cb)(struct coomm_subsystem *, unsigned int severity);
 
 	/* private members */
 	size_t allocated;
@@ -615,12 +605,20 @@ struct coomm_subsystem {
 static struct coomm_subsystem *coomm_subsystem_saved;
 size_t coomm_subsystem_max_saved;
 
-int coomm_register_subsystems(struct coomm_subsystem *ss, size_t ss_max)
+int coomm_init(struct coomm_subsystem *ss, size_t ss_max, unsigned int flags)
 {
 	size_t i;
 
 	if (!ss || ss_max <= 0)
 		return -EINVAL;
+
+	if (flags)
+		return -EINVAL;
+
+	if (coomm_subsystem_saved) {
+		/* already called! */
+		return -EINPROGRESS;
+	}
 
 	coomm_subsystem_saved = ss;
 	coomm_subsystem_max_saved = ss_max;
@@ -629,6 +627,9 @@ int coomm_register_subsystems(struct coomm_subsystem *ss, size_t ss_max)
 		ss[i].allocated = 0;
 		ss[i].max_allocated = 0;
 	}
+
+	cooom_init_accounter();
+	memset(coomm_account, 0, sizeof(coomm_account));
 
 	return 0;
 }
@@ -752,12 +753,6 @@ void xfree(void *ptr)
 }
 
 
-static void coom_cb(int subsystem, unsigned int severity)
-{
-	printf("subsystem %d should reclaim memory [severity: %d]\n",
-	       subsystem, severity);
-}
-
 
 
 static void component_alpha_init(void)
@@ -801,12 +796,34 @@ static void component_beta_init(void)
 }
 
 
+static void component_generic_oom_cb(struct coomm_subsystem *cs, unsigned int severity)
+{
+	(void)cs;
+	(void)severity;
+	printf("subsystem %s should reclaim memory [severity: %d]\n",
+	       cs->name, severity);
+
+}
+
+
 static struct coomm_subsystem cs[] =
 {
 #define COOMM_SS_ALPHA 1
-	{ .id = COOMM_SS_ALPHA, .name = "Alpha", .min_required = 2048, .priority = 10 },
+	{
+	  .id           = COOMM_SS_ALPHA,
+	  .name         = "Alpha",
+	  .priority     = 10,
+	  .min_required = 2048,
+	  .cb           = component_generic_oom_cb
+	},
 #define COOMM_SS_BETA  2
-	{ .id = COOMM_SS_BETA,  .name = "Beta",  .min_required = 8192, .priority = 5 },
+	{
+	  .id           = COOMM_SS_BETA,
+	  .name         = "Beta",
+	  .priority     = 5,
+	  .min_required = 8192,
+	  .cb           = component_generic_oom_cb
+	},
 };
 
 
@@ -816,9 +833,7 @@ int main(int ac, char **av)
 	(void)ac;
 	(void)av;
 
-	coomm_init();
-	coomm_register_subsystems(cs, ARRAY_SIZE(cs));
-	coomm_register_oom_callback(coom_cb);
+	coomm_init(cs, ARRAY_SIZE(cs), 0);
 
 	component_alpha_init();
 	component_beta_init();
