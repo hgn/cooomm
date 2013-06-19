@@ -798,8 +798,6 @@ static void component_beta_init(void)
 
 static void component_generic_oom_cb(struct coomm_subsystem *cs, unsigned int severity)
 {
-	(void)cs;
-	(void)severity;
 	printf("subsystem %s should reclaim memory [severity: %d]\n",
 	       cs->name, severity);
 
