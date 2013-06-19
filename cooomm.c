@@ -548,21 +548,6 @@ static void my_free_hook(void *ptr, const void *caller)
 	__free_hook = my_free_hook;
 }
 
-/* definition of memory sub systems */
-enum {
-	MEMORY_SS_COMPONENT_ALPHA,
-	MEMORY_SS_COMPONENT_BETA,
-
-	MEMORY_SS_COMPONENT_MAX
-};
-
-struct coomm_account {
-	size_t allocated;
-	size_t max_allocated;
-};
-
-struct coomm_account coomm_account[MEMORY_SS_COMPONENT_MAX];
-
 
 #define INIT_ACCOUNTER_ELEMENTS 256
 
@@ -629,18 +614,20 @@ int coomm_init(struct coomm_subsystem *ss, size_t ss_max, unsigned int flags)
 	}
 
 	cooom_init_accounter();
-	memset(coomm_account, 0, sizeof(coomm_account));
 
 	return 0;
 }
 
 
-int coom_malloc_account(void *addr, int component, size_t size)
+int coom_malloc_account(void *addr, unsigned int component, size_t size)
 {
 	unsigned int i;
 	struct cooom_accounter_entry *cooom_accounter_entry;
 
-	coomm_account[component].allocated += size;
+	if (component >= coomm_subsystem_max_saved)
+		return -EINVAL;
+
+	coomm_subsystem_saved[component].allocated += size;
 
 	for (i = 0; i < cooom_accounter_entries_no; i++) {
 		cooom_accounter_entry = &cooom_accounter_entries[i];
@@ -672,12 +659,12 @@ void coom_free_account(void *addr)
 			continue;
 
 		if (cooom_accounter_entry->addr == (uintptr_t)addr) {
-			if (coomm_account[cooom_accounter_entry->component].allocated >
-					coomm_account[cooom_accounter_entry->component].max_allocated) {
-				coomm_account[cooom_accounter_entry->component].max_allocated =
-					coomm_account[cooom_accounter_entry->component].allocated;
+			if (coomm_subsystem_saved[cooom_accounter_entry->component].allocated >
+					coomm_subsystem_saved[cooom_accounter_entry->component].max_allocated) {
+				coomm_subsystem_saved[cooom_accounter_entry->component].max_allocated =
+					coomm_subsystem_saved[cooom_accounter_entry->component].allocated;
 			}
-			coomm_account[cooom_accounter_entry->component].allocated -=
+			coomm_subsystem_saved[cooom_accounter_entry->component].allocated -=
 				cooom_accounter_entry->size;
 			memset(cooom_accounter_entry, 0, sizeof(*cooom_accounter_entry));
 			return;
@@ -687,18 +674,20 @@ void coom_free_account(void *addr)
 
 void coom_statistics_show(void)
 {
-	int i;
+	unsigned int i;
 
-	for (i = 0; i < MEMORY_SS_COMPONENT_MAX; i++) {
-		fprintf(stderr, "component: %d -> currently allocated: %zd, max allocated: %zd\n",
-			i, coomm_account[i].allocated,  coomm_account[i].max_allocated);
+	for (i = 0; i < coomm_subsystem_max_saved; i++) {
+		fprintf(stderr, "component: %s -> currently allocated: %zd, max allocated: %zd\n",
+			coomm_subsystem_saved[i].name,
+			coomm_subsystem_saved[i].allocated,
+			coomm_subsystem_saved[i].max_allocated);
 
 	}
 }
 
 
 /* must be freed by xfree_full */
-void *xmalloc_full(int component, size_t size)
+void *xmalloc_full(unsigned int component, size_t size)
 {
 	void *ptr;
 
@@ -725,21 +714,23 @@ void *xmalloc(int component, size_t size)
 	if (!ptr)
 		return ptr;
 
-	coomm_account[component].allocated += size;
+	coomm_subsystem_saved[component].allocated += size;
 
 	return ptr;
 }
 
 
-void xfree_full(int component, void *ptr, size_t size)
+void xfree_full(unsigned int component, void *ptr, size_t size)
 {
-	if (coomm_account[component].allocated >
-	    coomm_account[component].max_allocated) {
-		coomm_account[component].max_allocated =
-		    coomm_account[component].allocated;
+	assert(component <= coomm_subsystem_max_saved);
+
+	if (coomm_subsystem_saved[component].allocated >
+	    coomm_subsystem_saved[component].max_allocated) {
+		coomm_subsystem_saved[component].max_allocated =
+		    coomm_subsystem_saved[component].allocated;
 	}
 
-	coomm_account[component].allocated -= size;
+	coomm_subsystem_saved[component].allocated -= size;
 
 	free(ptr);
 }
@@ -753,49 +744,6 @@ void xfree(void *ptr)
 }
 
 
-
-
-static void component_alpha_init(void)
-{
-	char *ptr, *ptr2;
-
-	ptr = xmalloc_full(MEMORY_SS_COMPONENT_ALPHA, 100);
-	coom_statistics_show();
-
-	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
-	coom_statistics_show();
-
-	ptr = xmalloc_full(MEMORY_SS_COMPONENT_ALPHA, 100);
-	coom_statistics_show();
-
-	ptr2 = xmalloc_full(MEMORY_SS_COMPONENT_ALPHA, 100);
-	coom_statistics_show();
-
-	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr, 100);
-	xfree_full(MEMORY_SS_COMPONENT_ALPHA, ptr2, 100);
-	coom_statistics_show();
-}
-
-
-static void component_beta_init(void)
-{
-	char *ptr;
-
-	ptr = xmalloc(MEMORY_SS_COMPONENT_ALPHA, 100);
-	coom_statistics_show();
-
-	xfree(ptr);
-	coom_statistics_show();
-
-	ptr = xmalloc(MEMORY_SS_COMPONENT_ALPHA, 100);
-	coom_statistics_show();
-
-
-	xfree(ptr);
-	coom_statistics_show();
-}
-
-
 static void component_generic_oom_cb(struct coomm_subsystem *cs, unsigned int severity)
 {
 	printf("subsystem %s should reclaim memory [severity: %d]\n",
@@ -806,7 +754,7 @@ static void component_generic_oom_cb(struct coomm_subsystem *cs, unsigned int se
 
 static struct coomm_subsystem cs[] =
 {
-#define COOMM_SS_ALPHA 1
+#define COOMM_SS_ALPHA 0
 	{
 	  .id           = COOMM_SS_ALPHA,
 	  .name         = "Alpha",
@@ -814,7 +762,7 @@ static struct coomm_subsystem cs[] =
 	  .min_required = 2048,
 	  .cb           = component_generic_oom_cb
 	},
-#define COOMM_SS_BETA  2
+#define COOMM_SS_BETA  1
 	{
 	  .id           = COOMM_SS_BETA,
 	  .name         = "Beta",
@@ -823,6 +771,47 @@ static struct coomm_subsystem cs[] =
 	  .cb           = component_generic_oom_cb
 	},
 };
+
+
+static void component_alpha_init(void)
+{
+	char *ptr, *ptr2;
+
+	ptr = xmalloc_full(COOMM_SS_ALPHA, 100);
+	coom_statistics_show();
+
+	xfree_full(COOMM_SS_ALPHA, ptr, 100);
+	coom_statistics_show();
+
+	ptr = xmalloc_full(COOMM_SS_ALPHA, 100);
+	coom_statistics_show();
+
+	ptr2 = xmalloc_full(COOMM_SS_ALPHA, 100);
+	coom_statistics_show();
+
+	xfree_full(COOMM_SS_ALPHA, ptr, 100);
+	xfree_full(COOMM_SS_ALPHA, ptr2, 100);
+	coom_statistics_show();
+}
+
+
+static void component_beta_init(void)
+{
+	char *ptr;
+
+	ptr = xmalloc(COOMM_SS_BETA, 100);
+	coom_statistics_show();
+
+	xfree(ptr);
+	coom_statistics_show();
+
+	ptr = xmalloc(COOMM_SS_BETA, 100);
+	coom_statistics_show();
+
+
+	xfree(ptr);
+	coom_statistics_show();
+}
 
 
 
