@@ -672,7 +672,7 @@ void coom_free_account(void *addr)
 	}
 }
 
-void coom_statistics_show(void)
+void coomm_statistics_show(void)
 {
 	unsigned int i;
 
@@ -778,20 +778,20 @@ static void component_alpha_init(void)
 	char *ptr, *ptr2;
 
 	ptr = xmalloc_full(COOMM_SS_ALPHA, 100);
-	coom_statistics_show();
+	coomm_statistics_show();
 
 	xfree_full(COOMM_SS_ALPHA, ptr, 100);
-	coom_statistics_show();
+	coomm_statistics_show();
 
 	ptr = xmalloc_full(COOMM_SS_ALPHA, 100);
-	coom_statistics_show();
+	coomm_statistics_show();
 
 	ptr2 = xmalloc_full(COOMM_SS_ALPHA, 100);
-	coom_statistics_show();
+	coomm_statistics_show();
 
 	xfree_full(COOMM_SS_ALPHA, ptr, 100);
 	xfree_full(COOMM_SS_ALPHA, ptr2, 100);
-	coom_statistics_show();
+	coomm_statistics_show();
 }
 
 
@@ -800,17 +800,16 @@ static void component_beta_init(void)
 	char *ptr;
 
 	ptr = xmalloc(COOMM_SS_BETA, 100);
-	coom_statistics_show();
+	coomm_statistics_show();
 
 	xfree(ptr);
-	coom_statistics_show();
+	coomm_statistics_show();
 
 	ptr = xmalloc(COOMM_SS_BETA, 100);
-	coom_statistics_show();
+	coomm_statistics_show();
 
 
 	xfree(ptr);
-	coom_statistics_show();
 }
 
 
@@ -824,6 +823,7 @@ int main(int ac, char **av)
 
 	component_alpha_init();
 	component_beta_init();
+	coomm_statistics_show();
 
 	return 0;
 }
